@@ -1,7 +1,3 @@
-Here’s the updated `README.md` to reflect the new kernel-agnostic GPIO handling, additional translations, and compatibility with Bookworm:
-
----
-
 ## Evo Sabre as a Volumio 3 Plugin
 
 This plugin has two main purposes:
