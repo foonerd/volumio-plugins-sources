@@ -1,0 +1,52 @@
+{
+    "NAME": "EVO SABRE PLUGIN",
+    "PLUGIN_CONFIGURATION": "EVO SABRE",
+    "SAVE": "Speichern",
+    "UI": {
+        "OLED_CONTRAST_DOC": "Stellen Sie den Kontrast für OLED#2 ein.<br>Der Wert muss zwischen 0 und 255 liegen.",
+        "OLED_CONTRAST_LABEL": "Kontrast",
+        "OLED_SCREENSAVER_DOC": "Wie lange (in Sekunden) OLED#2 Datum und Uhrzeit anzeigt, bevor es in den Bildschirmschoner-Modus wechselt, wenn kein Titel abgespielt wird.",
+        "OLED_SCREENSAVER_LABEL": "Bildschirmschoner-Verzögerung",
+        "OLED_DEEPSLEEP_DOC": "Wie lange (in Sekunden) OLED#2 den Bildschirmschoner anzeigt, bevor es in den Tiefschlafmodus wechselt.<br>Der Bildschirmschoner kann deaktiviert werden, indem dieser Wert auf 0 gesetzt wird.",
+        "OLED_DEEPSLEEP_LABEL": "Verzögerung bis zum Tiefschlaf",
+        "OLED_RESTART_LABEL": "OLED#2 neu starten",
+        "OLED_RESTART_DOC": "Verwenden Sie diese Schaltfläche, um das OLED#2-Skript neu zu starten.",
+        "OLED_ENABLE": "OLED#2 aktivieren",
+        "OLED_ENABLE_DOC": "Aktiviert/deaktiviert die sekundäre Volumio 3-Anzeigeschicht (rechtes Display).",
+        "CONFIG_UPDATE": "Konfiguration aktualisiert.",
+        "CONFIG_NOCHANGE": "Keine Änderungen an der Konfiguration.",
+        "REMOTE_ENABLE": "Fernbedienung aktivieren",
+        "REMOTE_ENABLE_DOC": "Aktiviert/deaktiviert die Volumio 3-Fernbedienungsschicht (Wiedergabesteuerung). Die Funktionen des DAC (Quelle, Lautstärke) werden von der Platine gesteuert und können nicht deaktiviert werden.",
+        "REMOTE_DIAGNOSE": "Fernbedienung prüfen",
+        "REMOTE_DIAGNOSE_DOC": "Klicken Sie hier, um das System abzufragen und die Fernbedienungsdienste zu diagnostizieren.",
+        "REMOTE_DIAGNOSE_OK": "Fernbedienungskonfiguration OK",
+        "REMOTE_DIAGNOSE_REMOTE_DETECTED": "LIRC verwendet die richtige Fernbedienung.",
+        "OPEN_PLUGDOC": "Hilfe zur Konfiguration von Evo Sabre",
+        "OPEN_PLUGDOC_DOC": "Lesen Sie die Dokumentation, um Ihren Evo Sabre zu konfigurieren.",
+        "GPIO_CONFIG_DOC": "Konfigurieren Sie kernelunabhängige GPIO-Einstellungen für Evo Sabre.",
+        "GPIO_CONFIG_LABEL": "GPIO-Pin-Konfiguration",
+        "GPIO_NAME_LABEL": "GPIO-Pin-Name",
+        "GPIO_NAME_DOC": "Name des GPIO-Pins (z. B. oledReset).",
+        "GPIO_NUMBER_LABEL": "GPIO-Pin-Nummer",
+        "GPIO_NUMBER_DOC": "Kernelunabhängige GPIO-Pin-Nummer.",
+        "GPIO_DIRECTION_LABEL": "Richtung",
+        "GPIO_DIRECTION_DOC": "Wählen Sie die Richtung des GPIO-Pins (Eingang oder Ausgang)."
+    },
+    "ERRORS": {
+        "SYSTEMD_FAIL": "Fehler beim Starten des systemd-Dienstes.",
+        "REMOTE_DIAGNOSE_DISABLED": "Sie müssen den Fernbedienungsdienst aktivieren, bevor Sie überprüfen können, ob er ordnungsgemäß funktioniert. Die erste Installation erfordert auch einen Neustart.",
+        "REMOTE_DIAGNOSE_ERROR": "Schwerwiegender Fehler mit dem Fernbedienungsdienst. Bitte starten Sie Ihren Evo Sabre neu und installieren Sie dieses Plugin neu, wenn Sie diese Meldung erneut sehen.",
+        "REMOTE_DIAGNOSE_CONFLICT": "Es liegt ein Problem in Ihrer Fernbedienungskonfiguration vor. Sie sollten Ihren Evo Sabre neu starten, um zu sehen, ob das Problem weiterhin besteht. Wenn ja, installieren Sie dieses Plugin neu und stellen Sie sicher, dass kein anderes Plugin die LIRC-Fernbedienungskonfiguration verwendet."
+    },
+    "DOCUMENTATION": {
+        "title": "Konfigurieren Sie Ihren Evo Sabre für Volumio",
+        "intro": "Vielen Dank, dass Sie dieses Plugin für Ihren Audiophonics Evo Sabre verwenden.<br>Durch die Installation und Aktivierung dieses Plugins wurde das rechte Display automatisch konfiguriert und kann nun aktiviert/deaktiviert werden.",
+        "conf": "Volumio bietet mehrere Optionen, die vor der Musikwiedergabe konfiguriert werden sollten. Hier sind einige Anweisungen.",
+        "dac": "Wenn dies nicht während der Ersteinrichtung von Volumio konfiguriert wurde, richten Sie den DAC ES9038 als Audioausgang ein.",
+        "dsd": "Wählen Sie im Menü \"DSD-Wiedergabemodus\" die Option \"DSD über PCM (DOP)\".",
+        "vol": "Wählen Sie unter \"Mixer-Typ\" die Option \"Hardware\".",
+        "mpd": "Wir empfehlen, die MPD-Client-Lautstärkesteuerung zu aktivieren.",
+        "off_note_title": "Hinweis zur Ausschaltfunktion",
+        "off_note": "Die Ausschaltfunktion an der Fernbedienung schaltet das Gerät aus, fährt jedoch das System nicht ordnungsgemäß herunter."
+    }
+}

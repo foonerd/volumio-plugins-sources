@@ -1,0 +1,52 @@
+{
+    "NAME": "EVO SABRE PLUGIN",
+    "PLUGIN_CONFIGURATION": "EVO SABRE",
+    "SAVE": "Opslaan",
+    "UI": {
+        "OLED_CONTRAST_DOC": "Stel het contrast in voor OLED#2.<br>De waarde moet tussen 0 en 255 liggen.",
+        "OLED_CONTRAST_LABEL": "Contrast",
+        "OLED_SCREENSAVER_DOC": "Hoe lang (in seconden) OLED#2 de tijd en datum weergeeft voordat het overgaat naar de screensaver-modus wanneer er geen nummer wordt afgespeeld.",
+        "OLED_SCREENSAVER_LABEL": "Screensaver vertraging",
+        "OLED_DEEPSLEEP_DOC": "Hoe lang (in seconden) OLED#2 de screensaver toont voordat het in diepe slaapmodus gaat.<br>Schermbeveiliging uitschakelen door deze waarde op 0 in te stellen.",
+        "OLED_DEEPSLEEP_LABEL": "Vertraging diepe slaap",
+        "OLED_RESTART_LABEL": "Herstart OLED#2",
+        "OLED_RESTART_DOC": "Gebruik deze knop om het OLED#2-script opnieuw te starten.",
+        "OLED_ENABLE": "OLED#2 inschakelen",
+        "OLED_ENABLE_DOC": "Schakelt de secundaire Volumio 3-displaylaag in/uit (rechterdisplay).",
+        "CONFIG_UPDATE": "Configuratie bijgewerkt.",
+        "CONFIG_NOCHANGE": "Geen wijzigingen in configuratie.",
+        "REMOTE_ENABLE": "Afstandsbediening inschakelen",
+        "REMOTE_ENABLE_DOC": "Schakelt de Volumio 3-afstandsbedieningslaag in/uit (afspeelbediening). De DAC-functies (bron, volume) worden door de hardware beheerd en kunnen niet worden uitgeschakeld.",
+        "REMOTE_DIAGNOSE": "Controleer status afstandsbediening",
+        "REMOTE_DIAGNOSE_DOC": "Klik hier om het systeem te diagnosticeren.",
+        "REMOTE_DIAGNOSE_OK": "Afstandsbediening configuratie OK",
+        "REMOTE_DIAGNOSE_REMOTE_DETECTED": "LIRC gebruikt de juiste afstandsbediening.",
+        "OPEN_PLUGDOC": "Hulp voor Evo Sabre configuratie",
+        "OPEN_PLUGDOC_DOC": "Lees de documentatie voor het configureren van je Evo Sabre.",
+        "GPIO_CONFIG_DOC": "Configureer kernel-onafhankelijke GPIO-instellingen voor Evo Sabre.",
+        "GPIO_CONFIG_LABEL": "GPIO-pinnen configuratie",
+        "GPIO_NAME_LABEL": "Naam van GPIO-pin",
+        "GPIO_NAME_DOC": "Naam van de GPIO-pin (bijv. oledReset).",
+        "GPIO_NUMBER_LABEL": "Nummer van GPIO-pin",
+        "GPIO_NUMBER_DOC": "Kernel-onafhankelijk GPIO-pin nummer.",
+        "GPIO_DIRECTION_LABEL": "Richting",
+        "GPIO_DIRECTION_DOC": "Selecteer de richting van de GPIO-pin (Input of Output)."
+    },
+    "ERRORS": {
+        "SYSTEMD_FAIL": "Fout bij starten systemd-dienst.",
+        "REMOTE_DIAGNOSE_DISABLED": "Je moet de afstandsbedieningsdienst inschakelen voordat je deze kunt diagnosticeren.",
+        "REMOTE_DIAGNOSE_ERROR": "Fatale fout in afstandsbedieningsdienst. Start je Evo Sabre opnieuw op en herinstalleer deze plugin indien nodig.",
+        "REMOTE_DIAGNOSE_CONFLICT": "Er is een probleem in je afstandsbedieningsconfiguratie. Start opnieuw en probeer opnieuw."
+    },
+    "DOCUMENTATION": {
+        "title": "Je Evo Sabre configureren voor Volumio",
+        "intro": "Dank voor het gebruik van deze plugin voor je Evo Sabre.<br>Installeren en inschakelen is alles wat nodig is.",
+        "conf": "Volumio biedt extra configuraties om je ervaring te verbeteren.",
+        "dac": "Configureer ES9038 als uitgang in de afspeelopties.",
+        "dsd": "Selecteer \"DSD via PCM (DOP)\" als afspeelmodus.",
+        "vol": "Selecteer \"Hardware\" als mengertype.",
+        "mpd": "Schakel MPD-client volumeregeling in.",
+        "off_note_title": "Opmerking over uitschakelen",
+        "off_note": "Gebruik altijd de webinterface om veilig uit te schakelen voordat je de fysieke knoppen gebruikt."
+    }
+}

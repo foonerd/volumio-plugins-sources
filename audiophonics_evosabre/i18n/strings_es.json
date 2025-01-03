@@ -1,0 +1,52 @@
+{
+    "NAME": "PLUGIN EVO SABRE",
+    "PLUGIN_CONFIGURATION": "EVO SABRE",
+    "SAVE": "Guardar",
+    "UI": {
+        "OLED_CONTRAST_DOC": "Ajusta el contraste para OLED#2.<br>El valor debe estar entre 0 y 255.",
+        "OLED_CONTRAST_LABEL": "Contraste",
+        "OLED_SCREENSAVER_DOC": "Tiempo (en segundos) que OLED#2 mostrará fecha y hora antes de activar el modo de salvapantallas si no se está reproduciendo una pista.",
+        "OLED_SCREENSAVER_LABEL": "Retraso del salvapantallas",
+        "OLED_DEEPSLEEP_DOC": "Tiempo (en segundos) que OLED#2 mostrará el salvapantallas antes de entrar en modo de suspensión profunda.<br>El salvapantallas se desactiva si este valor es 0.",
+        "OLED_DEEPSLEEP_LABEL": "Retraso antes de suspensión profunda",
+        "OLED_RESTART_LABEL": "Reiniciar OLED#2",
+        "OLED_RESTART_DOC": "Usa este botón para reiniciar el script de OLED#2.",
+        "OLED_ENABLE": "Habilitar OLED#2",
+        "OLED_ENABLE_DOC": "Habilita/deshabilita la capa de pantalla secundaria de Volumio 3 (pantalla derecha).",
+        "CONFIG_UPDATE": "Configuración actualizada.",
+        "CONFIG_NOCHANGE": "No hay cambios en la configuración.",
+        "REMOTE_ENABLE": "Habilitar control remoto",
+        "REMOTE_ENABLE_DOC": "Habilita/deshabilita la capa de control remoto de Volumio 3 (control de reproducción). Las funciones del DAC (fuente, volumen) son manejadas por la placa y no pueden ser deshabilitadas.",
+        "REMOTE_DIAGNOSE": "Verificar estado del control remoto",
+        "REMOTE_DIAGNOSE_DOC": "Haz clic aquí para diagnosticar los servicios de control remoto.",
+        "REMOTE_DIAGNOSE_OK": "Configuración del control remoto OK",
+        "REMOTE_DIAGNOSE_REMOTE_DETECTED": "LIRC está utilizando el control remoto correcto.",
+        "OPEN_PLUGDOC": "Ayuda para configurar el Evo Sabre",
+        "OPEN_PLUGDOC_DOC": "Lee la documentación para configurar tu Evo Sabre.",
+        "GPIO_CONFIG_DOC": "Configura los ajustes GPIO independientes del kernel para Evo Sabre.",
+        "GPIO_CONFIG_LABEL": "Configuración de pines GPIO",
+        "GPIO_NAME_LABEL": "Nombre del pin GPIO",
+        "GPIO_NAME_DOC": "Nombre del pin GPIO (ej., oledReset).",
+        "GPIO_NUMBER_LABEL": "Número del pin GPIO",
+        "GPIO_NUMBER_DOC": "Número del pin GPIO independiente del kernel.",
+        "GPIO_DIRECTION_LABEL": "Dirección",
+        "GPIO_DIRECTION_DOC": "Selecciona la dirección del pin GPIO (Entrada o Salida)."
+    },
+    "ERRORS": {
+        "SYSTEMD_FAIL": "Error al iniciar el servicio systemd.",
+        "REMOTE_DIAGNOSE_DISABLED": "Debes habilitar el servicio de control remoto antes de diagnosticarlo. La primera instalación también requiere un reinicio.",
+        "REMOTE_DIAGNOSE_ERROR": "Error fatal con el servicio de control remoto. Reinicia tu Evo Sabre e instala este plugin nuevamente si ves este mensaje.",
+        "REMOTE_DIAGNOSE_CONFLICT": "Hay un problema con la configuración de tu control remoto. Reinicia tu Evo Sabre e intenta nuevamente. Si el problema persiste, reinstala este plugin."
+    },
+    "DOCUMENTATION": {
+        "title": "Configuración de tu Evo Sabre para Volumio",
+        "intro": "Gracias por usar este plugin para tu Audiophonics Evo Sabre.<br>Instalar y habilitar este plugin es todo lo que necesitas para que funcione la pantalla secundaria de la derecha en Volumio.",
+        "conf": "Volumio tiene más opciones que deberías configurar antes de reproducir música. Aquí tienes algunas indicaciones.",
+        "dac": "Configura el DAC ES9038 como salida de audio en las opciones de reproducción.",
+        "dsd": "Selecciona \"DSD sobre PCM (DOP)\" en el modo de reproducción DSD.",
+        "vol": "Selecciona \"Hardware\" como el tipo de mezclador.",
+        "mpd": "Recomendamos habilitar el control de volumen del cliente MPD.",
+        "off_note_title": "Nota sobre la función de apagado",
+        "off_note": "El botón de apagado en el control remoto no apaga el sistema correctamente. Usa la interfaz web de Volumio para apagar el sistema antes de usar el botón físico."
+    }
+}

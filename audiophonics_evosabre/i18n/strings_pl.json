@@ -1,0 +1,52 @@
+{
+    "NAME": "PLUGIN EVO SABRE",
+    "PLUGIN_CONFIGURATION": "EVO SABRE",
+    "SAVE": "Zapisz",
+    "UI": {
+        "OLED_CONTRAST_DOC": "Ustaw kontrast dla OLED#2.<br>Wartość musi być pomiędzy 0 a 255.",
+        "OLED_CONTRAST_LABEL": "Kontrast",
+        "OLED_SCREENSAVER_DOC": "Czas (w sekundach), przez który OLED#2 wyświetla datę i godzinę przed włączeniem wygaszacza ekranu, jeśli nie odtwarzany jest żaden utwór.",
+        "OLED_SCREENSAVER_LABEL": "Opóźnienie wygaszacza ekranu",
+        "OLED_DEEPSLEEP_DOC": "Czas (w sekundach), przez który OLED#2 wyświetla wygaszacz ekranu przed przejściem w tryb głębokiego uśpienia.<br>Wygaszacz ekranu można wyłączyć ustawiając tę wartość na 0.",
+        "OLED_DEEPSLEEP_LABEL": "Opóźnienie głębokiego uśpienia",
+        "OLED_RESTART_LABEL": "Restartuj OLED#2",
+        "OLED_RESTART_DOC": "Użyj tego przycisku, aby zrestartować skrypt OLED#2.",
+        "OLED_ENABLE": "Włącz OLED#2",
+        "OLED_ENABLE_DOC": "Włącza/wyłącza warstwę wyświetlacza Volumio 3 (prawy ekran).",
+        "CONFIG_UPDATE": "Konfiguracja zaktualizowana.",
+        "CONFIG_NOCHANGE": "Brak zmian w konfiguracji.",
+        "REMOTE_ENABLE": "Włącz pilot",
+        "REMOTE_ENABLE_DOC": "Włącza/wyłącza warstwę pilota Volumio 3 (sterowanie odtwarzaniem). Funkcje DAC (źródło, głośność) są obsługiwane przez płytkę i nie można ich wyłączyć.",
+        "REMOTE_DIAGNOSE": "Sprawdź status pilota",
+        "REMOTE_DIAGNOSE_DOC": "Kliknij tutaj, aby zdiagnozować usługi pilota.",
+        "REMOTE_DIAGNOSE_OK": "Konfiguracja pilota OK",
+        "REMOTE_DIAGNOSE_REMOTE_DETECTED": "LIRC używa poprawnego pilota.",
+        "OPEN_PLUGDOC": "Pomoc w konfiguracji Evo Sabre",
+        "OPEN_PLUGDOC_DOC": "Przeczytaj dokumentację, aby skonfigurować swojego Evo Sabre.",
+        "GPIO_CONFIG_DOC": "Skonfiguruj ustawienia GPIO niezależne od jądra dla Evo Sabre.",
+        "GPIO_CONFIG_LABEL": "Konfiguracja pinów GPIO",
+        "GPIO_NAME_LABEL": "Nazwa pinu GPIO",
+        "GPIO_NAME_DOC": "Nazwa pinu GPIO (np. oledReset).",
+        "GPIO_NUMBER_LABEL": "Numer pinu GPIO",
+        "GPIO_NUMBER_DOC": "Numer pinu GPIO niezależny od jądra.",
+        "GPIO_DIRECTION_LABEL": "Kierunek",
+        "GPIO_DIRECTION_DOC": "Wybierz kierunek pinu GPIO (Wejście lub Wyjście)."
+    },
+    "ERRORS": {
+        "SYSTEMD_FAIL": "Błąd podczas uruchamiania usługi systemowej.",
+        "REMOTE_DIAGNOSE_DISABLED": "Musisz włączyć usługę pilota przed jej diagnozowaniem.",
+        "REMOTE_DIAGNOSE_ERROR": "Krytyczny błąd w usłudze pilota. Uruchom ponownie urządzenie i zainstaluj ponownie wtyczkę.",
+        "REMOTE_DIAGNOSE_CONFLICT": "Problem z konfiguracją pilota. Zrestartuj urządzenie i spróbuj ponownie. Jeśli problem nadal występuje, zainstaluj wtyczkę ponownie."
+    },
+    "DOCUMENTATION": {
+        "title": "Konfiguracja Evo Sabre dla Volumio",
+        "intro": "Dziękujemy za użycie tej wtyczki dla swojego Evo Sabre.<br>Instalacja i aktywacja tej wtyczki to wszystko, co jest potrzebne do działania prawego wyświetlacza.",
+        "conf": "Volumio ma kilka opcji, które należy skonfigurować przed rozpoczęciem odtwarzania muzyki.",
+        "dac": "Skonfiguruj DAC ES9038 jako wyjście audio w opcjach odtwarzania.",
+        "dsd": "Wybierz \"DSD przez PCM (DOP)\" jako tryb odtwarzania DSD.",
+        "vol": "Wybierz \"Sprzętowe\" jako typ miksera.",
+        "mpd": "Zalecamy włączenie kontroli głośności klienta MPD.",
+        "off_note_title": "Uwaga dotycząca funkcji wyłączania",
+        "off_note": "Używaj interfejsu Volumio do bezpiecznego wyłączania systemu przed użyciem przycisków fizycznych."
+    }
+}

@@ -18,5 +18,12 @@
     "oled_active": {
         "type": "boolean",
         "value": true
+    },
+    "gpioPins": {
+        "type": "array",
+        "value": [
+            { "name": "oledReset", "number": 17, "direction": "out" },
+            { "name": "oledEnable", "number": 27, "direction": "out" }
+        ]
     }
 }

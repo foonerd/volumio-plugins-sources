@@ -1,77 +1,128 @@
 'use strict';
 
-const 	libQ 		= require('kew'),
-		{ exec } 	= require('child_process'),
-		http 		= require('http');
-		
-	
-		
+const libQ = require('kew'),
+      { exec } = require('child_process'),
+      fs = require('fs'),
+      http = require('http'),
+      Gpio = require('onoff').Gpio; // Add GPIO handling for kernel-agnostic support
+
 module.exports = audiophonicsEvoSabre;
 
 function audiophonicsEvoSabre(context) {
-	this.context 		= context;
-	this.commandRouter 	= this.context.coreCommand;
-	this.logger 		= this.context.logger;
-	this.configManager	= this.context.configManager;
+    this.context = context;
+    this.commandRouter = this.context.coreCommand;
+    this.logger = this.context.logger;
+    this.configManager = this.context.configManager;
+    this.gpioPins = {}; // Initialize GPIO pins map
 }
 
 audiophonicsEvoSabre.prototype.getI18nFile = function (langCode) {
-	const dir = __dirname + '/i18n/',
-	files = fs.readdirSync(dir),
-	targetFile = 'strings_' + langCode + '.json';
-	if ( files.some(x=>x === targetFile) ) return dir + targetFile;
-	return dir + 'strings_en.json';
-} 
+    const dir = __dirname + '/i18n/',
+          files = fs.readdirSync(dir),
+          targetFile = 'strings_' + langCode + '.json';
+    if (files.some(x => x === targetFile)) return dir + targetFile;
+    return dir + 'strings_en.json';
+};
 
-audiophonicsEvoSabre.prototype.onVolumioStart = function(){
-	const 	configFile = this.commandRouter.pluginManager.getConfigurationFile( this.context, 'config.json' );
-    this.config	= new (require('v-conf'))();
+audiophonicsEvoSabre.prototype.onVolumioStart = function() {
+    const configFile = this.commandRouter.pluginManager.getConfigurationFile(this.context, 'config.json');
+    this.config = new (require('v-conf'))();
     this.config.loadFile(configFile);
+    this.initializeGpioPins(); // Initialize GPIO pins on startup
     return libQ.resolve();
-}
-
-audiophonicsEvoSabre.prototype.onStart = function(){
-	const 	defer = libQ.defer();
-	this.logger.info( "EVO SABRE : Starting Plugin" );	
-
-	this.commandRouter.loadI18nStrings();
-	
-	this.configSoftLinks([`${__dirname}/apps/evo_oled`])
-		.then( x=> this.systemctl('daemon-reload')  )
-		.then( x=> this.startServiceIfActive("oled_active","evo_oled2")  )
-		.then( x=> this.setRemoteActive( this.config.get("remote_active") )  )
-		.then( x=> defer.resolve() )
-		.fail( x=> this.logger.error("EVO SABRE ERROR " + x) )
-	return defer.promise;
 };
 
-audiophonicsEvoSabre.prototype.onStop = function (){
-	const defer = libQ.defer();
-	this.systemctl('stop evo_oled2.service')
-	.then( x=> this.systemctl('stop lircd.service') )
-	.then( x=> this.systemctl('stop irexec.service') )
-	.then( x=> defer.resolve() )
-	.fail( x=> defer.reject() );
-	return defer.promise;
+audiophonicsEvoSabre.prototype.onStart = function() {
+    const defer = libQ.defer();
+    this.logger.info("EVO SABRE: Starting Plugin");
+
+    this.commandRouter.loadI18nStrings();
+
+    this.configSoftLinks([`${__dirname}/apps/evo_oled`])
+        .then(() => this.systemctl('daemon-reload'))
+        .then(() => this.startServiceIfActive("oled_active", "evo_oled2"))
+        .then(() => this.setRemoteActive(this.config.get("remote_active")))
+        .then(() => defer.resolve())
+        .fail(err => this.logger.error("EVO SABRE ERROR " + err));
+    return defer.promise;
 };
 
-audiophonicsEvoSabre.prototype.onRestart = function(){
-	const defer = libQ.defer();
-	this.commandRouter.loadI18nStrings();
-	this.systemctl('restart evo_oled2.service')
-	.then( x=> this.systemctl('restart lircd.service') )
-	.then( x=> this.systemctl('restart irexec.service') )
-	.then( x=> defer.resolve() )
-	.fail( x=> defer.reject() );
-	return defer.promise;
-}
+audiophonicsEvoSabre.prototype.onStop = function() {
+    const defer = libQ.defer();
+    this.systemctl('stop evo_oled2.service')
+        .then(() => this.cleanupGpioPins())
+        .then(() => defer.resolve())
+        .fail(err => defer.reject(err));
+    return defer.promise;
+};
 
-audiophonicsEvoSabre.prototype.restartOled = function(){
-	const defer = libQ.defer();
-	this.systemctl('restart evo_oled2.service')
-	.then( x=> defer.resolve()	)
-	.fail( x=> defer.reject() 	);
-	return defer.promise;
+audiophonicsEvoSabre.prototype.onRestart = function() {
+    const defer = libQ.defer();
+    this.commandRouter.loadI18nStrings();
+    this.systemctl('restart evo_oled2.service')
+        .then(() => this.systemctl('restart lircd.service'))
+        .then(() => this.systemctl('restart irexec.service'))
+        .then(() => defer.resolve())
+        .fail(err => defer.reject(err));
+    return defer.promise;
+};
+
+audiophonicsEvoSabre.prototype.restartOled = function() {
+    const defer = libQ.defer();
+    this.systemctl('restart evo_oled2.service')
+        .then(() => {
+            if (this.gpioPins) {
+                Object.keys(this.gpioPins).forEach(pinName => this.setGpioPin(pinName, 0));
+            }
+            defer.resolve();
+        })
+        .fail(err => defer.reject(err));
+    return defer.promise;
+};
+
+audiophonicsEvoSabre.prototype.initializeGpioPins = function() {
+    const gpioConfig = this.config.get('gpioPins') || [];
+    gpioConfig.forEach(pinConfig => {
+        this.gpioPins[pinConfig.name] = new Gpio(pinConfig.number, pinConfig.direction || 'out');
+    });
+};
+
+audiophonicsEvoSabre.prototype.setGpioPin = function(pinName, value) {
+    if (this.gpioPins[pinName]) {
+        try {
+            this.gpioPins[pinName].writeSync(value);
+        } catch (error) {
+            this.logger.error(`[EVO SABRE] GPIO Error: ${error.message}`);
+        }
+    } else {
+        this.logger.warn(`[EVO SABRE] GPIO Pin ${pinName} is not initialized.`);
+    }
+};
+
+audiophonicsEvoSabre.prototype.cleanupGpioPins = function() {
+    Object.keys(this.gpioPins).forEach(pinName => {
+        try {
+            this.gpioPins[pinName].unexport();
+        } catch (error) {
+            this.logger.error(`[EVO SABRE] GPIO Cleanup Error: ${error.message}`);
+        }
+    });
+    this.gpioPins = {};
+    return libQ.resolve();
+};
+
+audiophonicsEvoSabre.prototype.systemctl = function(cmd) {
+    const defer = libQ.defer();
+    exec(`/usr/bin/sudo /bin/systemctl ${cmd}`, { uid: 1000, gid: 1000 }, (err, stdout, stderr) => {
+        if (err) {
+            this.logger.error(`[EVO SABRE] Systemd failed cmd: ${cmd} - ${err}`);
+            defer.reject(err);
+        } else {
+            this.logger.info(`[EVO SABRE] Systemd cmd ${cmd} executed successfully.`);
+            defer.resolve();
+        }
+    });
+    return defer.promise;
 };
 
 // Configuration Methods -----------------------------------------------------------------------------

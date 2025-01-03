@@ -1,29 +1,29 @@
 {
     "page": {
-        "label": "Evo Sabre configuration"
+        "label": "Evo Sabre Configuration"
     },
     "sections": [
-		{
+        {
             "id": "documentation",
             "element": "section",
-            "label": "Doc",
+            "label": "Documentation",
             "icon": "fa-book-o",
             "content": [{
-                    "id": "evo_help",
-                    "element": "button",
-                    "label": "TRANSLATE.UI.OPEN_PLUGDOC",
-                    "doc": "TRANSLATE.UI.OPEN_PLUGDOC_DOC",
-                    "onClick": {
-                        "type": "plugin",
-                        "endpoint": "system_hardware/audiophonics_evo_sabre",
-                        "method": "getPluginDoc"
-                    }
-			}]
+                "id": "evo_help",
+                "element": "button",
+                "label": "TRANSLATE.UI.OPEN_PLUGDOC",
+                "doc": "TRANSLATE.UI.OPEN_PLUGDOC_DOC",
+                "onClick": {
+                    "type": "plugin",
+                    "endpoint": "system_hardware/audiophonics_evo_sabre",
+                    "method": "getPluginDoc"
+                }
+            }]
         },
-		{
+        {
             "id": "oled2_display",
             "element": "section",
-            "label": "OLED #2 configuration",
+            "label": "OLED #2 Configuration",
             "icon": "fa-television",
             "onSave": {
                 "type": "controller",
@@ -82,8 +82,52 @@
                     }
                 }
             ]
-        }, 
-		{
+        },
+        {
+            "id": "gpio_pins",
+            "element": "section",
+            "label": "GPIO Configuration",
+            "icon": "fa-microchip",
+            "onSave": {
+                "type": "controller",
+                "endpoint": "system_hardware/audiophonics_evo_sabre",
+                "method": "updateGpioConfig"
+            },
+            "saveButton": {
+                "label": "Save",
+                "data": ["gpioPins"]
+            },
+            "content": [{
+                "id": "gpioPins",
+                "element": "array",
+                "label": "Configure GPIO Pins",
+                "doc": "TRANSLATE.UI.GPIO_DOC",
+                "array": [{
+                    "id": "name",
+                    "type": "string",
+                    "element": "input",
+                    "label": "Pin Name",
+                    "doc": "Name of the GPIO pin"
+                }, {
+                    "id": "number",
+                    "type": "number",
+                    "element": "input",
+                    "label": "Pin Number",
+                    "doc": "Kernel-agnostic pin number"
+                }, {
+                    "id": "direction",
+                    "type": "string",
+                    "element": "select",
+                    "options": [
+                        { "value": "in", "label": "Input" },
+                        { "value": "out", "label": "Output" }
+                    ],
+                    "label": "Direction",
+                    "doc": "Direction of the GPIO pin"
+                }]
+            }]
+        },
+        {
             "id": "remote",
             "element": "section",
             "label": "Remote",
@@ -98,23 +142,22 @@
                 "data": ["remote_active"]
             },
             "content": [{
-                    "id": "remote_active",
-                    "element": "switch",
-                    "label": "TRANSLATE.UI.REMOTE_ENABLE",
-                    "doc": "TRANSLATE.UI.REMOTE_ENABLE_DOC",
-                    "value": true
-                }, {
-                    "id": "diagnose_remote",
-                    "element": "button",
-                    "label": "TRANSLATE.UI.REMOTE_DIAGNOSE",
-                    "doc": "TRANSLATE.UI.REMOTE_DIAGNOSE_DOC",
-                    "onClick": {
-                        "type": "plugin",
-                        "endpoint": "system_hardware/audiophonics_evo_sabre",
-                        "method": "diagnoseRemote"
-                    }
+                "id": "remote_active",
+                "element": "switch",
+                "label": "TRANSLATE.UI.REMOTE_ENABLE",
+                "doc": "TRANSLATE.UI.REMOTE_ENABLE_DOC",
+                "value": true
+            }, {
+                "id": "diagnose_remote",
+                "element": "button",
+                "label": "TRANSLATE.UI.REMOTE_DIAGNOSE",
+                "doc": "TRANSLATE.UI.REMOTE_DIAGNOSE_DOC",
+                "onClick": {
+                    "type": "plugin",
+                    "endpoint": "system_hardware/audiophonics_evo_sabre",
+                    "method": "diagnoseRemote"
                 }
-            ]
+            }]
         }
     ]
 }

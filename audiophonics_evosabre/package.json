@@ -1,19 +1,21 @@
 {
 	"name": "audiophonics_evo_sabre",
-	"version": "1.0.0",
-	"description": "Hardware configuration & display drivers for Evo Sabre",
+	"version": "1.1.0",
+	"description": "Hardware configuration & display drivers for Evo Sabre, modified by foonerd",
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"author": "Olivier Audiophonics",
+	"author": "Olivier Audiophonics, foonerd",
 	"license": "ISC",
 	"volumio_info": {
 		"prettyName": "Audiophonics Evo Sabre",
 		"icon": "fa-hdd-o",
 		"plugin_type": "system_hardware",
 		"architectures": [
-			"armhf"
+			"armhf",
+			"arm64",
+			"x86"
 		]
 	},
 	"dependencies": {
@@ -22,7 +24,8 @@
 		"fs-extra": "^0.28.0",
 		"kew": "",
 		"socket.io-client": "^2.4.0",
-		"v-conf": "^1.4.3"
+		"v-conf": "^1.4.3",
+		"onoff": "^6.0.0"
 	},
 	"engines": {
 		"node": ">=14.15.4",
