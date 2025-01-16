@@ -1,14 +1,27 @@
-## Character display uninstallation script
-echo "Uninstalling Audiophonics on/off and its dependencies..."
-INSTALLING="/home/volumio/audiophonicsonoff-plugin.uninstalling"
+## Audiophonics On/Off Plugin Uninstallation Script
 
-if [ ! -f $INSTALLING ]; then
+echo "Uninstalling Audiophonics On/Off plugin and cleaning up dependencies..."
+UNINSTALLING="/home/volumio/audiophonicsonoff-plugin.uninstalling"
 
-	touch $INSTALLING
+if [ ! -f $UNINSTALLING ]; then
+	touch $UNINSTALLING
 
-	rm $INSTALLING
+	# Remove Node.js dependencies
+	echo "Removing Node.js dependencies..."
+	rm -rf /data/plugins/miscellanea/audiophonicsonoff/node_modules
 
-	#required to end the plugin uninstall
+	# Clean up system dependencies if necessary
+	echo "Checking if libgpiod2 can be safely removed..."
+	if dpkg -s libgpiod2 &> /dev/null; then
+		echo "libgpiod2 is installed. Leaving it untouched as it may be used by other plugins."
+	else
+		echo "libgpiod2 is not installed. No cleanup needed."
+	fi
+
+	# Cleanup
+	rm $UNINSTALLING
+
+	# Required to end the plugin uninstall
 	echo "pluginuninstallend"
 else
 	echo "Plugin is already uninstalling! Not continuing..."

@@ -1,18 +1,28 @@
-## Character display installation script
-echo "Installing Audiophonics on/off and its dependencies..."
+## Audiophonics On/Off Plugin Installation Script
+
+echo "Installing Audiophonics On/Off plugin and its dependencies..."
 INSTALLING="/home/volumio/audiophonicsonoff-plugin.installing"
 
 if [ ! -f $INSTALLING ]; then
-
 	touch $INSTALLING
 
-	# Download installation package
-	echo "No packages needed, only node_modules are required"
-	# Perform any kind of wget/apt-get install/dpkg -i/etc.
-	
+	# Ensure required system dependencies are installed
+	echo "Checking and installing required dependencies..."
+	if ! dpkg -s libgpiod2 &> /dev/null; then
+		echo "Installing libgpiod2..."
+		apt-get update && apt-get install -y libgpiod2
+	else
+		echo "libgpiod2 is already installed."
+	fi
+
+	# Install Node.js dependencies
+	echo "Installing Node.js dependencies..."
+	npm install --prefix /data/plugins/miscellanea/audiophonicsonoff
+
+	# Cleanup
 	rm $INSTALLING
 
-	#required to end the plugin install
+	# Required to end the plugin install
 	echo "plugininstallend"
 else
 	echo "Plugin is already installing! Not continuing..."
