@@ -14,8 +14,7 @@
 		"plugin_type": "system_hardware",
 		"architectures": [
 			"armhf",
-			"arm64",
-			"x86"
+			"arm64"
 		]
 	},
 	"dependencies": {
@@ -25,11 +24,11 @@
 		"kew": "",
 		"socket.io-client": "^2.4.0",
 		"v-conf": "^1.4.3",
-		"onoff": "^6.0.0"
+		"gpiod": "^1.0.0"  // Added gpiod dependency
 	},
 	"engines": {
 		"node": ">=14.15.4",
 		"volumio": ">=3"
 	},
-	"repository": "https://github.com/audiophonics/volumio-plugins-sources/tree/master/audiophonics_evosabre"
+	"repository": "https://github.com/volumio/volumio-plugins-sources/tree/master/audiophonics_evosabre"
 }

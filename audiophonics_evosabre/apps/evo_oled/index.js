@@ -549,4 +549,3 @@ fs.readFile("config.json",(err,data)=>{
 	process.on('SIGUSR2', 	exitcatch.bind( null, { exit:true	} ));
 
 });
-

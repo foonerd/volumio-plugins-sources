@@ -1,18 +1,29 @@
 #!/bin/bash
 
-
 SCRIPT=$(realpath "$0")
 current_dir=$(dirname "$SCRIPT")
 
 INSTALLING="/home/volumio/audiophonics_evo_sabre-plugin.installing"
 
-if [ `dpkg --print-architecture` != "armhf" ]; then
-	echo "This plugin is made for armhf hardware (Raspberry Pi) and cannot run under a different arch. Nothing will happen."; 
-	exit 0;
+arch=$(dpkg --print-architecture)
+if [ "$arch" != "armhf" ] && [ "$arch" != "arm64" ]; then
+    echo "This plugin is made for ARM hardware (Raspberry Pi) and cannot run under a different arch. Nothing will happen."
+    exit 0
 fi
 
+echo "Installing dependencies for OLED and remote control"
 
-echo "Installing display OLED#2" 
+# Install libgpiod for GPIO handling
+apt-get update > /dev/null
+apt-get install --no-install-recommends -y libgpiod2 lirc > /dev/null
+
+# Ensure volumio user has GPIO access
+groupadd -f gpio
+usermod -a -G gpio volumio
+chown root:gpio /dev/gpiochip*
+chmod g+rw /dev/gpiochip*
+
+echo "Installing display OLED#2"
 
 mkdir "$current_dir"/service
 
@@ -32,12 +43,11 @@ WantedBy=multi-user.target"> "$current_dir"/service/evo_oled2.service
 ln -s -f "$current_dir"/service/evo_oled2.service /etc/systemd/system/evo_oled2.service
 
 echo "OLED#2 service created $current_dir/service/evo_oled2.service"
-echo "Installing remote control" 
+echo "Installing remote control"
 
-# This package of LIRC comes with about 80mb of GUI deps and we don't want any of that.
+# Install lirc without GUI dependencies
 apt-get update > /dev/null
 apt-get install --no-install-recommends -y lirc > /dev/null
-
 systemctl disable lircd irexec
 systemctl stop lircd irexec
 
@@ -54,7 +64,6 @@ WantedBy=multi-user.target
 "> "$current_dir"/service/evo_remote.service 
 ln -s -f "$current_dir"/service/evo_remote.service  /etc/systemd/system/evo_remote.service
 
-
 printf "[Unit]
 Wants=lircd-setup.service
 After=network.target lircd-setup.service
@@ -68,16 +77,12 @@ WantedBy=multi-user.target
 ln -s -f "$current_dir"/service/evo_irexec.service  /etc/systemd/system/evo_irexec.service	
 
 chown -R volumio "$current_dir"/service/
-systemctl daemon-reload 
-
+systemctl daemon-reload
 
 # Expose gpio-ir kernel driver
 if ! grep -q "dtoverlay=gpio-ir,gpio_pin=4" "/boot/userconfig.txt"; then
-	echo "dtoverlay=gpio-ir,gpio_pin=4"  >> /boot/userconfig.txt
+    echo "dtoverlay=gpio-ir,gpio_pin=4"  >> /boot/userconfig.txt
 fi
 
-
-#requred to end the plugin install
+# Required to end the plugin install
 echo "plugininstallend"
-
-
