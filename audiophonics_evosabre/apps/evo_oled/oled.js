@@ -1,8 +1,6 @@
-cconst fs = require("fs");
-const spi = require("spi-device");
-const gpiod = require("gpiod");
+const fs = require("fs");
+const { Gpio } = require("onoff");
 
-// Command Constants
 const CMD_COL = 0x15;
 const CMD_ROW = 0x75;
 const CMD_WRITE = 0x5C;
@@ -36,116 +34,133 @@ const CMD_COMLOCK = 0xFD;
 function chunkString(str, length) {
   return str.match(new RegExp(".{1," + length + "}", "g"));
 }
+
 var Oled = function (opts) {
+  // Display dimensions and chunk calculations
   this.HEIGHT = opts.height || 64;
   this.WIDTH = opts.width || 256;
-  this.horizontal_chunks = this.WIDTH >> 2; // Divide width by 4 for horizontal chunks
-  this._rXs = 28; // Start column register
-  this._rXe = this._rXs + this.horizontal_chunks - 1; // End column register
-  this._rYs = 0; // Start row register
-  this._rYe = this._rYs + this.HEIGHT - 1; // End row register
+  this.horizontal_chunks = this.WIDTH >> 2;
 
-  this.DCPIN = opts.dcPin || 27; // Data/Command GPIO pin
-  this.RSPIN = opts.rstPin || 24; // Reset GPIO pin
-  this.divisor = opts.divisor || 0xF1; // Clock divisor for display frequency
+  // Display registers
+  this._rXs = 28;
+  this._rXe = this._rXs + this.horizontal_chunks - 1;
+  this._rYs = 0;
+  this._rYe = this._rYs + this.HEIGHT - 1;
 
-  this.cursor_x = 0; // Initial cursor position X
-  this.cursor_y = 0; // Initial cursor position Y
+  // GPIO pins for SPI-like communication
+  this.DCPIN = opts.dcPin || 27; // Data/Command pin
+  this.RSPIN = opts.rstPin || 24; // Reset pin
+  this.CLKPIN = opts.clkPin || 11; // Clock pin
+  this.DATAPIN = opts.dataPin || 10; // MOSI/Data pin
 
-  // Allocate buffer for OLED display memory
+  // Cursor position
+  this.cursor_x = 0;
+  this.cursor_y = 0;
+
+  // Initialize display buffer
   this.buffer = Buffer.alloc(2 * this.horizontal_chunks * this.HEIGHT);
   this.bufferlength = this.buffer.length;
 
-  // Initialize GPIO and SPI resources
-  this.chip = gpiod.openChip(0); // Open GPIO chip (e.g., gpiochip0)
-  this.dcLine = this.chip.getLine(this.DCPIN); // Request Data/Command line
-  this.rsLine = this.chip.getLine(this.RSPIN); // Request Reset line
+  // GPIO pin handling using onoff
+  const { Gpio } = require("onoff");
+  this.dcPin = new Gpio(this.DCPIN, "out");
+  this.rsPin = new Gpio(this.RSPIN, "out");
+  this.clkPin = new Gpio(this.CLKPIN, "out");
+  this.dataPin = new Gpio(this.DATAPIN, "out");
 
-  this.dcLine.request({ consumer: "oled", type: gpiod.LINE_REQUEST_DIRECTION_OUTPUT });
-  this.rsLine.request({ consumer: "oled", type: gpiod.LINE_REQUEST_DIRECTION_OUTPUT });
+  // Additional properties
+  this.last_change = null;
+  this.change_log = {};
+  this.updateInProgress = false;
+  this.hex_font = null;
+  this.contrast = opts.contrast || 0x00;
 
-  // Open SPI device for communication
-  this.spiDevice = spi.openSync(0, 0); // SPI Bus 0, Device 0
-};
+  // Debug information
+  console.log(
+    "Buffer length:",
+    this.bufferlength,
+    "Horizontal chunks:",
+    this.horizontal_chunks
+  );
+}
 
 Oled.prototype.begin = function () {
-  // Ensure display reset
+  // Ensure the display reset pin is properly initialized
   this.reset();
 
-  // Send initialization commands to the OLED
+  // Initialize the OLED display with commands
   this._initialise();
 
   // Clear the display buffer and update the OLED
   this.clear();
 
-  // Ensure cleanup on process exit
-  process.on('exit', () => {
-    this.clear(); // Clear display
-    this.cleanup(); // Release GPIO and SPI resources
+  // Set up a process exit handler to ensure cleanup
+  process.on("exit", () => {
+    this.clear(); // Clear the display
+    this.cleanup(); // Release GPIO resources
   });
-};
+
+  console.log("OLED initialization complete.");
+}
 
 Oled.prototype._initialise = function () {
-  // Set OLED to Command Mode
-  this.setCommandMode();
-
-  // Define the initialization sequence
-  const initSequence = [
-    { val: CMD_COMLOCK },                  // Unlock commands
-    { val: 0x12, dc: true },               // Command lock setting
-    { val: CMD_DISPOFF },                  // Display OFF
-    { val: CMD_COL, dc: true },            // Set column start and end
-    { val: this._rXs },                    // Start column
-    { val: this._rXe },                    // End column
-    { val: CMD_ROW, dc: true },            // Set row start and end
-    { val: this._rYs },                    // Start row
-    { val: this._rYe },                    // End row
-    { val: CMD_SETCLKFREQ, dc: true },     // Set display clock frequency
-    { val: this.divisor },                 // Frequency divisor
-    { val: CMD_MUXRATIO, dc: true },       // Multiplex ratio
-    { val: this._rYe },                    // Height of the display
-    { val: CMD_DISPOFFSET, dc: true },     // Display offset
-    { val: 0x00 },                         // No offset
-    { val: CMD_SETSTART, dc: true },       // Set start line
-    { val: 0x00 },                         // Start line at 0
-    { val: CMD_MODE, dc: true },           // Remap format
-    { val: 0x14 },                         // Horizontal addressing
-    { val: 0x11 },                         // Sequential COM
-    { val: CMD_SETGPIO, dc: true },        // GPIO settings
-    { val: 0x00 },                         // Disable GPIO
-    { val: CMD_VDDSEL, dc: true },         // Enable external VDD
-    { val: 0x01 },                         // Function selection
-    { val: CMD_DISPENHA, dc: true },       // Display enhancement
-    { val: 0x00 },                         // Enable external VSL
-    { val: 0xB0 },                         // VSL selection
-    { val: CMD_CONTRSTCUR, dc: true },     // Contrast current
-    { val: 0xFF },                         // Max contrast
-    { val: CMD_MSTCONTRST, dc: true },     // Master contrast
-    { val: 0b11001111 },                   // High contrast
-    { val: CMD_DEFGRYTABLE },              // Default grayscale table
-    { val: CMD_ENGREYSCALE },              // Enable grayscale
-    { val: CMD_PHASELEN, dc: true },       // Phase length
-    { val: 0x05 },                         // Phase 1
-    { val: 0x03 },                         // Phase 2
-    { val: CMD_DISPENHB, dc: true },       // Display enhancement B
-    { val: 0x82 },                         // Precharge and discharge
-    { val: 0x20 },                         // Enhanced driving scheme
-    { val: CMD_PRECHRGVOL, dc: true },     // Precharge voltage
-    { val: 0x1F },                         // Level
-    { val: CMD_SECPRECHRG, dc: true },     // Second precharge period
-    { val: 0x08 },                         // Period
-    { val: CMD_SETVCOMH, dc: true },       // Set VCOMH
-    { val: 0x07 },                         // VCOMH level
-    { val: CMD_DISPNORM },                 // Set display to normal mode
-    { val: CMD_DISPON },                   // Display ON
+  // Initialization sequence for the OLED display
+  const seq = [
+    { val: CMD_COMLOCK },         // Unlock command lock
+    { val: 0x12, dc: true },      // Command lock setting
+    { val: CMD_DISPOFF },         // Display OFF
+    { val: CMD_COL, dc: true },   // Set column start and end
+    { val: this._rXs },           // Start column
+    { val: this._rXe },           // End column
+    { val: CMD_ROW, dc: true },   // Set row start and end
+    { val: this._rYs },           // Start row
+    { val: this._rYe },           // End row
+    { val: CMD_SETCLKFREQ, dc: true }, // Set display clock frequency
+    { val: this.divisor },             // Frequency divisor
+    { val: CMD_MUXRATIO, dc: true },   // Multiplex ratio
+    { val: this._rYe },                // Height of the display
+    { val: CMD_DISPOFFSET, dc: true }, // Display offset
+    { val: 0x00 },                     // No offset
+    { val: CMD_SETSTART, dc: true },   // Set start line
+    { val: 0x00 },                     // Start line at 0
+    { val: CMD_MODE, dc: true },       // Remap format
+    { val: 0x14 },                     // Horizontal addressing
+    { val: 0x11 },                     // Sequential COM
+    { val: CMD_SETGPIO, dc: true },    // GPIO settings
+    { val: 0x00 },                     // Disable GPIO
+    { val: CMD_VDDSEL, dc: true },     // Enable external VDD
+    { val: 0x01 },                     // Function selection
+    { val: CMD_DISPENHA, dc: true },   // Display enhancement
+    { val: 0x00 },                     // Enable external VSL
+    { val: 0xB0 },                     // VSL selection
+    { val: CMD_CONTRSTCUR, dc: true }, // Contrast current
+    { val: this.contrast },            // Set contrast
+    { val: CMD_MSTCONTRST, dc: true }, // Master contrast
+    { val: 0b11001111 },               // High contrast
+    { val: CMD_DEFGRYTABLE },          // Default grayscale table
+    { val: CMD_ENGREYSCALE },          // Enable grayscale
+    { val: CMD_PHASELEN, dc: true },   // Phase length
+    { val: 0x05 },                     // Phase 1
+    { val: 0x03 },                     // Phase 2
+    { val: CMD_DISPENHB, dc: true },   // Display enhancement B
+    { val: 0x82 },                     // Precharge and discharge
+    { val: 0x20 },                     // Enhanced driving scheme
+    { val: CMD_PRECHRGVOL, dc: true }, // Precharge voltage
+    { val: 0x1F },                     // Level
+    { val: CMD_SECPRECHRG, dc: true }, // Second precharge period
+    { val: 0x08 },                     // Period
+    { val: CMD_SETVCOMH, dc: true },   // Set VCOMH
+    { val: 0x07 },                     // VCOMH level
+    { val: CMD_DISPNORM },             // Set display to normal mode
+    { val: CMD_DISPON }                // Display ON
   ];
 
-  // Send the initialization sequence
-  this.send_instruction_seq(initSequence);
-};
+  // Send the initialization sequence using the helper method
+  this.send_instruction_seq(seq);
+}
 
 Oled.prototype.send_instruction_seq = function (sequence, callback, index = 0) {
-  // Base case: end of the sequence
+  // Base case: if the sequence is complete
   if (index >= sequence.length) {
     if (typeof callback === "function") callback();
     return;
@@ -155,23 +170,26 @@ Oled.prototype.send_instruction_seq = function (sequence, callback, index = 0) {
 
   // Handle Data/Command mode toggling
   if (current.dc) {
-    this.setDataMode(); // Set to Data mode
+    this.dcPin.writeSync(1); // Set DC pin HIGH for Data mode
     this.send_instruction_seq(sequence, callback, index + 1);
   } else if (current.cd) {
-    this.setCommandMode(); // Set to Command mode
+    this.dcPin.writeSync(0); // Set DC pin LOW for Command mode
     this.send_instruction_seq(sequence, callback, index + 1);
   } else {
     // Send the value
     let value = current.val;
     if (typeof value !== "object") value = Buffer.from([value]);
 
-    this.spiWrite(value); // Send via SPI
+    // Simulate SPI write using bit-banging
+    this.spiWrite(value);
+
+    // Move to the next instruction
     this.send_instruction_seq(sequence, callback, index + 1);
   }
-};
+}
 
 Oled.prototype.update = function (callback) {
-  // Prevent multiple updates running simultaneously
+  // Prevent multiple updates from running simultaneously
   if (this.updateInProgress) {
     if (typeof callback === "function") callback();
     return;
@@ -179,125 +197,132 @@ Oled.prototype.update = function (callback) {
 
   this.updateInProgress = true;
 
-  // Create a copy of the buffer for static frame updates
-  const staticFrame = Buffer.alloc(this.buffer.length);
-  this.buffer.copy(staticFrame);
+  // Create a static copy of the buffer to avoid overwriting during update
+  const static_frame = Buffer.alloc(this.buffer.length);
+  this.buffer.copy(static_frame);
 
-  // Define the update sequence
+  // Define the sequence for updating the display
   const sequence = [
-    { val: CMD_COL, dc: true },            // Set column range
-    { val: 28 },                          // Start column
-    { val: 28 + this.horizontal_chunks - 1 }, // End column
-    { val: CMD_ROW, dc: true },           // Set row range
-    { val: 0x00 },                        // Start row
-    { val: this.HEIGHT - 1 },             // End row
-    { val: CMD_WRITE },                   // Write data
-    { val: staticFrame, dc: true },       // Send frame buffer data
+    { val: CMD_COL }, // Set column address
+    { dc: true, val: 28 },
+    { dc: true, val: 28 + this.horizontal_chunks - 1 },
+    { cd: true },
+    { val: CMD_ROW }, // Set row address
+    { dc: true, val: 0x00 },
+    { dc: true, val: this.HEIGHT - 1 },
+    { cd: true },
+    { val: CMD_WRITE }, // Write mode
+    { dc: true, val: static_frame }, // Display buffer content
+    { cd: true }
   ];
 
-  // Send the update sequence
+  // Send the sequence
   this.send_instruction_seq(sequence, () => {
-    this.updateInProgress = false; // Mark update as completed
-    if (typeof callback === "function") callback(); // Execute the callback if provided
+    this.updateInProgress = false;
+
+    // Execute callback if provided
+    if (typeof callback === "function") callback();
   });
-};
+}
 
 Oled.prototype.clear = function (callback) {
-  // Fill the display buffer with zeros
-  this.buffer.fill(0x00);
-
-  // Push the cleared buffer to the OLED display
+  this.buffer.fill(0x00); // Fill the display buffer with zeros
   this.update(() => {
     if (typeof callback === "function") callback();
   });
-};
+}
 
 Oled.prototype.reset = function () {
-  // Set the reset pin to LOW to reset the display
-  this.rsLine.setValue(0);
+  // Pull the reset pin LOW to reset the display
+  this.rsPin.writeSync(0);
 
   // Hold the reset pin LOW for 10 milliseconds
   setTimeout(() => {
-    // Set the reset pin back to HIGH to complete the reset
-    this.rsLine.setValue(1);
+    // Pull the reset pin HIGH to complete the reset
+    this.rsPin.writeSync(1);
   }, 10);
-};
+}
 
-
-// set starting position of a text string on the oled
-Oled.prototype.setCursor = function(x, y) {
+// Set the starting position of a text string on the OLED
+Oled.prototype.setCursor = function (x, y) {
   this.cursor_x = x;
   this.cursor_y = y;
 }
 
-// write text to the oled
+// Write text to the OLED display
 Oled.prototype.writeString = function (font, size, string, color) {
-  let offset = this.cursor_x;
+  var wordArr = string.split(' '); // Split the string into words
+  var len = wordArr.length;
+  var offset = this.cursor_x; // Start at the current cursor position
+  var padding = 0, letspace = 0, leading = 2; // Spacing variables
 
-  for (let char of string) {
-    // Get the character buffer from the font
-    const charBuf = this._findCharBuf(font, char);
-    if (!charBuf) {
-      console.warn(`Character "${char}" not found in font.`);
-      continue;
+  for (var w = 0; w < len; w++) {
+    wordArr[w] += ' '; // Add a space after each word
+    var stringArr = wordArr[w].split(''); // Split the word into characters
+    var slen = stringArr.length;
+
+    for (var i = 0; i < slen; i++) {
+      var charBuf = this._findCharBuf(font, stringArr[i]); // Find character buffer in the font
+      if (!charBuf) {
+        console.warn(`Character "${stringArr[i]}" not found in font.`);
+        continue; // Skip characters not in the font
+      }
+      var charBytes = this._readCharBytes(charBuf); // Read the character's binary data
+      this._drawChar(charBytes, size, color); // Draw the character on the screen
+
+      padding = size + letspace; // Calculate padding for character spacing
+      offset += (font.width * size) + padding; // Update the cursor offset
+      this.setCursor(offset, this.cursor_y); // Move the cursor to the next position
     }
-
-    // Convert character buffer into binary for rendering
-    const charBytes = this._readCharBytes(charBuf);
-
-    // Draw the character at the current cursor position
-    this._drawChar(charBytes, size, color);
-
-    // Update the cursor offset for the next character
-    offset += font.width * size + size; // Add spacing between characters
-    this.setCursor(offset, this.cursor_y);
   }
-};
+}
 
-// draw an individual character to the screen
+// Draw an individual character to the screen
 Oled.prototype._drawChar = function (byteArray, size, col) {
-  const x = this.cursor_x;
-  const y = this.cursor_y;
+  var x = this.cursor_x; // Starting X position
+  var y = this.cursor_y; // Starting Y position
 
-  // Iterate through each byte in the character array
-  for (let i = 0; i < byteArray.length; i++) {
-    for (let j = 0; j < 8; j++) {
-      // Determine the pixel's color (on or off)
-      const pixel = (byteArray[i] >> j) & 1 ? col : 0;
+  for (var i = 0; i < byteArray.length; i++) {
+    for (var j = 0; j < 8; j++) {
+      var color = ((byteArray[i] >> j) & 1) * col; // Determine pixel color (on or off)
 
-      if (pixel) {
-        // Scale pixel size and draw at the correct position
-        if (size === 1) {
-          this.drawPixel(x + i, y + j, pixel);
-        } else {
-          this.fillRect(x + i * size, y + j * size, size, size, pixel);
-        }
+      if (size === 1) {
+        // Draw a single pixel for standard size
+        this.drawPixel(x + i, y + j, color);
+      } else {
+        // Scale the character size and draw a filled rectangle
+        var xpos = x + (i * size);
+        var ypos = y + (j * size);
+        this.fillRect(xpos, ypos, size, size, color);
       }
     }
   }
-};
+}
 
-// BASIC UNICODE SUPPORT
+// Load a hex font for BASIC UNICODE SUPPORT
 Oled.prototype.load_hex_font = function (fontpath, callback) {
-  this.hex_font = {}; // Initialize an empty object to store the font data
+  this.hex_font = {}; // Initialize the hex font storage
 
   fs.readFile(fontpath, (err, data) => {
     if (err) {
-      console.log("Error loading font:", err);
-      if (typeof callback === "function") callback(err);
+      console.error("Error reading font file:", err);
+      if (typeof callback === "function") {
+        callback(err);
+      }
       return;
     }
 
-    const unichars = data.toString().split("\n"); // Split file content into lines
-    for (let unichar of unichars) {
-      const code = parseInt(unichar.substring(0, 4), 16); // Parse Unicode value
-      const value = unichar.substring(5); // Get hex pixel data
-      if (code) {
-        let splitval;
-        let columns = 0;
-        let row_length = 0;
+    // Split the font file into individual character entries
+    const unichars = data.toString().split("\n");
 
-        // Determine the dimensions of the character (4x16 or 2x8)
+    for (let unichar of unichars) {
+      const code = parseInt(unichar.substring(0, 4), 16); // Unicode code point
+      const value = unichar.substring(5); // Hex pixel data
+
+      if (code && value) {
+        let columns, row_length;
+
+        // Determine the dimensions of the character
         if (value.length === 64) {
           columns = 4;
           row_length = 16;
@@ -306,307 +331,336 @@ Oled.prototype.load_hex_font = function (fontpath, callback) {
           row_length = 8;
         }
 
-        // Split hex data into rows
-        splitval = chunkString(value, columns).map(hex => parseInt(hex, 16));
+        // Split the hex data into rows and parse into integers
+        const splitval = chunkString(value, columns).map(hex => parseInt(hex, 16));
+
+        // Store the character data in the hex font object
         this.hex_font[code] = {
-          data: splitval, // Store binary row data
-          length: row_length, // Number of rows (height)
+          data: splitval, // Binary data of the character
+          length: row_length // Number of rows (height)
         };
       }
     }
 
-    // Call the callback if provided
+    // Invoke the callback if provided
     if (typeof callback === "function") {
       callback(null);
     }
   });
-};
+}
 
 Oled.prototype.CacheGlyphsData = function (string) {
-  this.cached_glyph = {}; // Initialize or reset the glyph cache
-
+  // Initialize the glyph cache
+  this.cached_glyph = {};
   if (!this.hex_font) {
-    console.log("Font not loaded. Call load_hex_font() first.");
+    console.log("Font not loaded. Please call load_hex_font() first.");
     return;
   }
 
-  // Identify all unique characters in the string
+  // Extract unique characters from the string
   const used_chars = new Set(string);
-  
-  // Cache glyph data for each unique character
+
   for (let char of used_chars) {
-    const charCode = char.charCodeAt(); // Get the Unicode code point of the character
-    const glyph_raw_data = this.hex_font[charCode]; // Lookup the character in the loaded font
+    const charCode = char.charCodeAt(); // Get Unicode code point
+    const glyph_raw_data = this.hex_font[charCode]; // Lookup glyph data in the font
 
     if (glyph_raw_data) {
       const binary_glyph = [];
-      
-      // Convert each row of the glyph's hex data into binary strings
+
+      // Process each row of the glyph's hex data
       for (let row of glyph_raw_data.data) {
         const binary_row_string = row.toString(2).padStart(glyph_raw_data.length, "0");
-        binary_glyph.push(binary_row_string);
+        binary_glyph.push(binary_row_string); // Add binary row to the glyph
       }
 
-      // Store the processed glyph data in the cache
+      // Cache the glyph data
       this.cached_glyph[char] = {
-        data: binary_glyph, // Binary representation of each row
-        width: binary_glyph[0]?.length || 0, // Width of the character
-        height: binary_glyph.length, // Height of the character
+        data: binary_glyph, // Binary representation of the character
+        width: binary_glyph[0]?.length || 0, // Width of the glyph
+        height: binary_glyph.length, // Height of the glyph
       };
     } else {
-      console.warn(`Character "${char}" not found in font.`);
+      console.warn(`Character "${char}" not found in the font.`);
     }
   }
-};
+}
 
 Oled.prototype.writeStringUnifont = function (string, color) {
   if (!this.hex_font) {
-    console.log("Font not loaded. Call load_hex_font() first.");
+    console.log("Font not loaded. Please call load_hex_font() first.");
     return;
   }
 
   if (!this.cached_glyph) {
-    console.log("Glyphs not cached. Call CacheGlyphsData() first.");
+    console.log("Glyphs not cached. Please call CacheGlyphsData() first.");
     return;
   }
 
+  // Loop through each character in the string
   for (let char of string) {
-    // Skip rendering if the character is not cached
-    const charBuf = this.cached_glyph[char];
+    if (this.cursor_x >= this.WIDTH) return; // Stop rendering if out of bounds
+
+    const charBuf = this.cached_glyph[char]; // Retrieve glyph from cache
     if (!charBuf) {
       console.warn(`Character "${char}" not found in cached glyphs.`);
-      continue;
+      continue; // Skip if glyph is missing
     }
 
-    // Skip rendering if the cursor is out of bounds
-    if (this.cursor_x >= this.WIDTH) return;
-
-    // Render the character using _drawCharUnifont
+    // Render the character
     this._drawCharUnifont(charBuf, color);
 
-    // Move the cursor to the right for the next character
+    // Move the cursor for the next character
     this.setCursor(this.cursor_x + charBuf.width, this.cursor_y);
   }
-};
+}
 
 Oled.prototype.getStringWidthUnifont = function (string) {
   if (!this.hex_font) {
-    console.log("Font not loaded. Call load_hex_font() first.");
+    console.log("Font not loaded. Please call load_hex_font() first.");
     return 0;
   }
 
-  if (!this.cached_glyph) {
-    console.log("Glyphs not cached. Call CacheGlyphsData() first.");
-    return 0;
-  }
+  if (!string || string.length === 0) return 0;
 
   let totalWidth = 0;
 
+  // Loop through each character in the string
   for (let char of string) {
-    // Retrieve the cached glyph for the character
-    const charBuf = this.cached_glyph[char];
-    if (!charBuf) {
-      console.warn(`Character "${char}" not found in cached glyphs.`);
-      continue;
+    const charBuf = this.hex_font[char.charCodeAt(0)]; // Retrieve the character's font buffer
+    if (charBuf) {
+      totalWidth += charBuf.length; // Add the character's width to the total
+    } else {
+      console.warn(`Character "${char}" not found in font.`);
     }
-
-    // Add the width of the character to the total width
-    totalWidth += charBuf.width;
   }
 
   return totalWidth;
 };
 
-// draw an individual character to the screen
-Oled.prototype._drawCharUnifont = function (glyph, color) {
+// Draw an individual character to the screen using Unifont glyph data
+Oled.prototype._drawCharUnifont = function (buf, color) {
   const startX = this.cursor_x; // Starting X position
   const startY = this.cursor_y; // Starting Y position
+  const data = buf.data; // Glyph binary data
 
-  // Iterate through the rows of the glyph
-  for (let row = 0; row < glyph.height; row++) {
-    // Iterate through each column in the row
-    for (let col = 0; col < glyph.width; col++) {
-      // Determine the pixel value (1 for on, 0 for off)
-      const pixel = glyph.data[row][col] === "1" ? color : 0;
+  // Iterate over each row of the glyph
+  for (let row = 0; row < buf.height; row++) {
+    // Iterate over each column in the current row
+    for (let col = 0; col < buf.width; col++) {
+      // Determine the pixel's state (on/off) from glyph data
+      const pixel = data[row][col] === "1" ? color : 0
 
-      // Render the pixel on the display
-      this.drawPixel(startX + col, startY + row, pixel);
+      // Render the pixel on the OLED screen
+      this.drawPixel(startX + col, startY + row, pixel)
     }
   }
-};
+}
 
+// Converts an array of bytes into an array of binary rows for character rendering
 Oled.prototype._readCharBytes = function (byteArray) {
-  const bitCharArr = []; // Array to hold binary rows
+  var bitArr = []; // Temporary array to store bits for each byte
+  var bitCharArr = []; // Final array to store binary rows for all bytes
 
-  for (let byte of byteArray) {
-    const bitRow = byte
-      .toString(2) // Convert the byte to a binary string
-      .padStart(8, "0") // Ensure the binary string is 8 bits long
-      .split("") // Split the binary string into individual bits
-      .map(bit => parseInt(bit, 10)); // Convert bits back to integers
-    bitCharArr.push(bitRow); // Add the binary row to the result array
+  // Loop through each byte in the byte array
+  for (var i = 0; i < byteArray.length; i += 1) {
+    var byte = byteArray[i];
+    
+    // Extract each bit from the byte
+    for (var j = 0; j < 8; j += 1) {
+      var bit = (byte >> j) & 1; // Isolate the bit at position j
+      bitArr.push(bit);
+    }
+    
+    // Add the row of bits to the result and reset for the next byte
+    bitCharArr.push(bitArr);
+    bitArr = [];
   }
 
   return bitCharArr;
-};
+}
 
-// find where the character exists within the font object
-Oled.prototype._findCharBuf = function (font, c) {
+// Locate the character's bitmap data within the font object
+Oled.prototype._findCharBuf = function(font, c) {
+  // Check if the font lookup table and font data are available
+  if (!font || !font.lookup || !font.fontData) {
+    console.warn("Font data or lookup table is missing. Cannot find character buffer.");
+    return null;
+  }
+
   // Find the position of the character in the font's lookup table
-  const charPos = font.lookup.indexOf(c);
+  const cBufPos = font.lookup.indexOf(c) * font.width;
 
   // If the character is not found, return null
-  if (charPos === -1) {
+  if (cBufPos < 0) {
     console.warn(`Character "${c}" not found in font.`);
     return null;
   }
 
-  // Calculate the starting position of the character's bitmap data
-  const startPos = charPos * font.width;
-
   // Extract and return the character's bitmap data
-  return font.fontData.slice(startPos, startPos + font.width);
-};
+  const cBuf = font.fontData.slice(cBufPos, cBufPos + font.width);
+  return cBuf;
+}
 
-Oled.prototype.setContrast = function (contrast, callback) {
-  // Ensure the contrast value is within valid bounds
+// Turn off the OLED display
+Oled.prototype.turnOffDisplay = function() {
+  // Clear the display buffer
+  this.buffer.fill(0x00);
+
+  // Update the display to clear it
+  this.update(() => {
+    // Send the command to turn off the display
+    this.send_instruction_seq([{ val: CMD_DISPOFF }]);
+  });
+}
+
+// Turn on the OLED display
+Oled.prototype.turnOnDisplay = function() {
+  this.send_instruction_seq([{val: CMD_DISPON}]);
+}
+
+Oled.prototype.setContrast = function(contrast, callback) {
+  // Ensure contrast is within valid range
   if (contrast < 0 || contrast > 255) {
     console.warn("Contrast value must be between 0 and 255.");
     return;
   }
 
   // Define the sequence to set the contrast
-  const sequence = [
-    { val: CMD_CONTRSTCUR },  // Command to set contrast
-    { val: contrast, dc: true }, // Contrast value
+  const seq = [
+    { val: CMD_CONTRSTCUR },
+    { val: contrast, dc: true }
   ];
 
-  // Send the sequence and execute the callback if provided
-  this.send_instruction_seq(sequence, callback);
-};
+  // Send the instruction sequence with the callback
+  this.send_instruction_seq(seq, callback);
+}
 
+Oled.prototype.drawPixel = function(x, y, color, bypass_buffer) {
+  // Ensure the pixel coordinates are within the display bounds
+  if (
+    x >= this.WIDTH || 
+    y >= this.HEIGHT || 
+    x < 0 || 
+    y < 0
+  ) { 
+    return;
+  }
 
-Oled.prototype.drawPixel = function (x, y, color, bypass_buffer = false) {
-  // Ensure the pixel coordinates are within the display's bounds
-  if (x < 0 || x >= this.WIDTH || y < 0 || y >= this.HEIGHT) return;
+  // Calculate the horizontal index and buffer index for the pixel
+  const horizontal_index = x >> 1; // Each buffer entry represents two horizontal pixels
+  const buffer_index = horizontal_index + ((this.horizontal_chunks << 1) * y);
 
-  // Calculate the index in the buffer for the pixel
-  const byteIndex = Math.floor(x / 2) + y * this.horizontal_chunks;
+  // Get the current state of the buffer for the given index
+  const oled_subcolumn_state = this.buffer[buffer_index];
+  
+  // Determine whether the pixel is in the right or left column
+  const right_col = x & 0x1; // True if x is odd, indicating the right column
+  const sub_col_left = oled_subcolumn_state >> 4; // Extract left nibble (4 bits)
+  const sub_col_right = oled_subcolumn_state & 0x0f; // Extract right nibble (4 bits)
 
-  // Determine which nibble (4 bits) to modify (left or right pixel)
-  const nibble = x % 2 === 0 ? (color << 4) : color;
-
-  if (!bypass_buffer) {
-    // Update the buffer, preserving the other nibble's state
-    this.buffer[byteIndex] =
-      (this.buffer[byteIndex] & (x % 2 === 0 ? 0x0F : 0xF0)) | nibble;
+  if (right_col) {
+    // Update the right column pixel
+    this.buffer[buffer_index] = (sub_col_left << 4) | color; // Preserve left, update right
   } else {
-    // Directly update the OLED without modifying the buffer
+    // Update the left column pixel
+    this.buffer[buffer_index] = (color << 4) | sub_col_right; // Preserve right, update left
+  }
+
+  // Optionally bypass the buffer and update the OLED directly
+  if (bypass_buffer) {
     this.setCommandMode();
     this.spiWrite([
       CMD_COL,
-      28 + Math.floor(x / 2), // Map to OLED's column address
-      28 + Math.floor(x / 2),
+      28 + horizontal_index,
+      28 + horizontal_index,
     ]);
     this.spiWrite([CMD_ROW, y, y]);
     this.setDataMode();
     this.spiWrite([color]);
   }
-};
+}
 
-//  Bresenham's algorithm
-Oled.prototype.drawLine = function (x0, y0, x1, y1, color) {
-  // Calculate the differences and steps for Bresenham's line algorithm
+// Bresenham's algorithm
+Oled.prototype.drawLine = function(x0, y0, x1, y1, color) {
+  // Calculate differences and steps
   let dx = Math.abs(x1 - x0);
+  let sx = x0 < x1 ? 1 : -1;
   let dy = Math.abs(y1 - y0);
-  let sx = x0 < x1 ? 1 : -1; // Step direction for x
-  let sy = y0 < y1 ? 1 : -1; // Step direction for y
+  let sy = y0 < y1 ? 1 : -1;
+
+  // Initialize error term
   let err = (dx > dy ? dx : -dy) / 2;
 
   while (true) {
     // Draw the current pixel
     this.drawPixel(x0, y0, color);
 
-    // Break if we've reached the endpoint
+    // Check if the line drawing is complete
     if (x0 === x1 && y0 === y1) break;
 
+    // Store the error term for comparison
     let e2 = err;
 
-    // Adjust error and step for x
+    // Adjust error term and move the x-coordinate
     if (e2 > -dx) {
       err -= dy;
       x0 += sx;
     }
 
-    // Adjust error and step for y
+    // Adjust error term and move the y-coordinate
     if (e2 < dy) {
       err += dx;
       y0 += sy;
     }
   }
-};
+}
 
-Oled.prototype.fillRect = function (x, y, w, h, color) {
-  // Iterate over the width and height to draw vertical lines for the rectangle
+Oled.prototype.fillRect = function(x, y, w, h, color) {
+  // Loop through each column within the rectangle's width
   for (let i = x; i < x + w; i++) {
-    this.drawLine(i, y, i, y + h - 1, color); // Draw a vertical line for each column
+    // Draw a vertical line from the top to the bottom of the rectangle
+    this.drawLine(i, y, i, y + h - 1, color);
   }
-};
+}
 
-Oled.prototype.load_and_display_logo = function (callback) {
-  callback = callback || function () {}; // Ensure callback is always callable
+Oled.prototype.load_and_display_logo = function(callback) {
+  callback = callback || function() {}; // Default callback to an empty function if none is provided.
 
-  // Read the logo file
   fs.readFile("logo.logo", (err, data) => {
     if (err) {
-      console.error("Error reading logo file:", err);
+      console.log("Error loading logo file:", err);
       callback(false);
       return;
     }
 
     try {
-      const lines = data.toString().split("\n"); // Split the file into lines
-      let flip = true; // Alternates pixel intensity
-      let pixelIndex = 0;
+      data = data.toString().split("\n");
+      let flip = true; // Alternate pixel colors for a simple effect.
+      let p = 0; // Pixel index.
 
-      for (let line of lines) {
-        while (line--) {
-          // Calculate the position and set pixel intensity
-          this.drawPixel(pixelIndex % this.WIDTH, Math.floor(pixelIndex / this.WIDTH), flip ? 7 : 0);
-          pixelIndex++;
+      // Iterate through each line of the logo data.
+      for (let d of data) {
+        let pixelCount = parseInt(d, 10); // Parse the number of pixels to process.
+        if (isNaN(pixelCount)) continue; // Skip invalid lines.
+
+        while (pixelCount--) {
+          const x = p % this.WIDTH; // Calculate x-coordinate.
+          const y = Math.floor(p / this.WIDTH); // Calculate y-coordinate.
+          const color = flip ? 7 : 0; // Alternate between colors.
+
+          this.drawPixel(x, y, color); // Draw the pixel.
+          p++;
         }
-        flip = !flip; // Toggle intensity for alternating pixels
+
+        flip = !flip; // Toggle the color.
       }
 
-      // Update the OLED display with the buffered data
-      this.update();
+      this.update(); // Push the updated buffer to the display.
       callback(true);
     } catch (e) {
-      console.error("Error processing logo data:", e);
+      console.log("Error while displaying logo:", e);
       callback(false);
     }
-  });
-};
-
-// Turn oled off
-Oled.prototype.turnOffDisplay = function () {
-  // Clear the display buffer
-  this.buffer.fill(0x00);
-
-  // Update the OLED display with the cleared buffer
-  this.update(() => {
-    // Send the command to turn off the display
-    const sequence = [{ val: CMD_DISPOFF }];
-    this.send_instruction_seq(sequence);
-  });
-};
-
-// Turn oled on
-Oled.prototype.turnOnDisplay = function () {
-  // Send the command to turn on the display
-  const sequence = [{ val: CMD_DISPON }];
-  this.send_instruction_seq(sequence, () => {
-    console.log("Display turned on.");
   });
 };
 

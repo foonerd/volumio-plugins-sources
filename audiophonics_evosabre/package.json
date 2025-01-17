@@ -24,7 +24,7 @@
 		"kew": "",
 		"socket.io-client": "^2.4.0",
 		"v-conf": "^1.4.3",
-		"gpiod": "^1.0.0"  // Added gpiod dependency
+		"onoff": ""
 	},
 	"engines": {
 		"node": ">=14.15.4",
